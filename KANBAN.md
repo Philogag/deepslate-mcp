@@ -22,10 +22,10 @@ SSH key: `/opt/data/profiles/meo/nova-ssh/id_rsa` (use `GIT_SSH_COMMAND="ssh -i 
 | Wave | Milestone | Status | Blocked By | Owner |
 |------|-----------|--------|------------|-------|
 | 0 | Kanban + planning docs | ✅ Done | — | Nova (this turn) |
-| 1 | **M0** Foundation (scaffold + hello MCP) | 🔴 TODO | — | subagent (free) |
-| 2a | **M1** Render core | 🔴 TODO | Wave 1 | subagent (free) |
-| 2b | **M2** Resource pipeline (mcmeta + cache) | 🔴 TODO | Wave 1 | subagent (free) |
-| 2c | **M3** Multi-format loaders (.nbt/.schem/.litematic) | 🔴 TODO | Wave 1 | subagent (free) |
+| 1 | **M0** Foundation (scaffold + hello MCP) | ✅ Done (f04250a) | — | subagent (free) |
+| 2a | **M1** Render core | 🟡 In progress (files written, commit pending) | Wave 1 ✓ | subagent (free) |
+| 2b | **M2** Resource pipeline (Mojang JAR 路线) | 🟡 Dispatched | Wave 1 ✓ | subagent (free) |
+| 2c | **M3** Multi-format loaders | 🟡 In progress (files + fixtures written, commit pending) | Wave 1 ✓ | subagent (free) |
 | 3 | **M4** MCP tools (4 tools) | 🔴 TODO | Wave 2a+2b+2c | subagent (free) |
 | 4 | **M5** Hermes integration | 🔴 TODO | Wave 3 | Nova (hand-test) |
 | 5 | **M6** Hardening | 🔴 TODO | Wave 4 | Nova (hand-test) |
@@ -54,15 +54,23 @@ SSH key: `/opt/data/profiles/meo/nova-ssh/id_rsa` (use `GIT_SSH_COMMAND="ssh -i 
 
 **Exit**: `npm run demo` produces non-empty PNG (>1KB).
 
-### Wave 2b — M2 Resource pipeline (single subagent, parallel)
-- [ ] **M2.1** `src/resources/cache_manager.ts` — `get/put/purge` keyed by version
-- [ ] **M2.2** `src/resources/mcmeta_loader.ts` — `fetchBlockDefinitions`, `fetchBlockModels`, `fetchTextureAtlas`
-- [ ] **M2.3** `src/resources/index.ts` — `buildResources()` orchestrator with version-check cache
-- [ ] **M2.4** Wire `buildResources()` into M1 pipeline
-- [ ] **M2.5** Re-render demo, verify textured blocks
+### Wave 2b — M2 Resource pipeline (single subagent, parallel) — **MOJANG JAR 路线**
+- [ ] **M2.0** `src/version.ts` — `MC_VERSION = "1.20.4"`, `RESOURCES_VERSION = "1.20.4-mojang-jar-1"`
+- [ ] **M2.1** `src/resources/cache_manager.ts` — `CacheManager` class，路径默认 ~/.cache/deepslate-mcp/，可通过 DEEPSLATE_CACHE_DIR 覆盖；get/put/getJson/putJson/exists/purge；按 sha1 哈希分目录
+- [ ] **M2.2** `src/resources/jar_loader.ts` — `loadJarResources(jarPath)` 返回 {blockstates, models, textures} Map；用 yauzl 流式读 JAR
+- [ ] **M2.3** `src/resources/manifest.ts` — `resolveVanillaJar()`: 查 version_manifest_v2.json → 找 1.20.4 → 拿 client.jar URL → 下载（如果 cache 没有）→ 返回本地路径
+- [ ] **M2.4** `src/resources/index.ts` — `buildResources()` orchestrator：
+  1. 解析 vanilla JAR（缓存 jar entry 列表到 cache_manager）
+  2. 构造 BlockDefinition fromJson for each blockstates
+  3. 构造 BlockModel fromJson for each model（处理 parent chain，flatten）
+  4. 用 PNG 构造 TextureAtlas（深 slate 的 TextureAtlas.fromBlobs 或手 pack）
+  5. 包装成 deepslate.Resources 接口
+- [ ] **M2.5** 验证：跑 demo M1 应该能看到正确纹理的方块（不再是紫黑 checker）
 - [ ] **M2.6** Commit + push
 
-**Exit**: Re-render shows correctly-textured blocks; cache populated; offline re-run works.
+**Exit**: 重新跑 `npm run demo`，PNG 显示正确纹理（oak_planks 木纹、cobblestone 鹅卵石、glass 玻璃色）；离线再跑也 work。
+
+**路线说明**：原计划用 misode/mcmeta，但 M2-探路发现 mcmeta 的 `summary/blocks/data.json` 不是 deepslate 直接需要的 `{variants, multipart}` 格式。改走 Mojang 官方 vanilla client JAR 路线，更可靠，ARCHITECTURE.md §4 早就 plan 过这个回退。
 
 ### Wave 2c — M3 Multi-format loaders (single subagent, parallel)
 - [ ] **M3.1** `src/structures/nbt_loader.ts` — vanilla `.nbt` structure blocks

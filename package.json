@@ -17,7 +17,9 @@
     "dev": "tsx src/server.ts",
     "build": "tsc",
     "start": "node bin/deepslate-mcp.js",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "demo": "tsx examples/demo-structure.ts",
+    "gen:fixtures": "tsx scripts/gen_fixtures.ts"
   },
   "keywords": [
     "mcp",
@@ -33,17 +35,18 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",
     "deepslate": "^0.26.0",
-    "gl-matrix": "^3.3.0",
     "gl": "^8.0.0",
+    "gl-matrix": "^3.3.0",
     "pngjs": "^7.0.0",
     "yauzl": "^3.0.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "tsx": "^4.7.0",
     "@types/node": "^20.0.0",
-    "@types/pngjs": "^6.0.0"
+    "@types/pngjs": "^6.0.0",
+    "@types/yauzl": "^3.4.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
   },
   "engines": {
     "node": ">=20.0.0"
