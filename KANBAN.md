@@ -23,9 +23,9 @@ SSH key: `/opt/data/profiles/meo/nova-ssh/id_rsa` (use `GIT_SSH_COMMAND="ssh -i 
 |------|-----------|--------|------------|-------|
 | 0 | Kanban + planning docs | ✅ Done | — | Nova (this turn) |
 | 1 | **M0** Foundation (scaffold + hello MCP) | ✅ Done (f04250a) | — | subagent (free) |
-| 2a | **M1** Render core | 🟡 In progress (files written, commit pending) | Wave 1 ✓ | subagent (free) |
+| 2a | **M1** Render core | ✅ Done (557ecfc) | Wave 1 ✓ | subagent (free) |
 | 2b | **M2** Resource pipeline (Mojang JAR 路线) | 🟡 Dispatched | Wave 1 ✓ | subagent (free) |
-| 2c | **M3** Multi-format loaders | 🟡 In progress (files + fixtures written, commit pending) | Wave 1 ✓ | subagent (free) |
+| 2c | **M3** Multi-format loaders | ✅ Done (557ecfc) | Wave 1 ✓ | subagent (free) |
 | 3 | **M4** MCP tools (4 tools) | 🔴 TODO | Wave 2a+2b+2c | subagent (free) |
 | 4 | **M5** Hermes integration | 🔴 TODO | Wave 3 | Nova (hand-test) |
 | 5 | **M6** Hardening | 🔴 TODO | Wave 4 | Nova (hand-test) |
