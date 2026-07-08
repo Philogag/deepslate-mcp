@@ -18,14 +18,14 @@
  * context. The headless-gl context doesn't have an explicit `destroy`
  * method, so we rely on letting the JS GC collect it.
  */
-import { StructureRenderer, type Structure } from 'deepslate';
+import { StructureRenderer, type Structure, type Resources } from 'deepslate';
 import { createHeadlessCanvas } from './headless_canvas.js';
 import { capturePNG } from './encoder.js';
 import { viewForAngle } from './camera.js';
 import { createStubResources } from './stub_resources.js';
 
 /** Camera preset for the rendered view. */
-export type RenderAngle = 'isometric' | 'top' | 'front' | 'side';
+export type RenderAngle = 'isometric' | 'top' | 'front' | 'side' | 'custom';
 
 /** All knobs the pipeline exposes. */
 export interface RenderOptions {
@@ -63,6 +63,19 @@ export interface RenderOptions {
    * that bound the structure. Default `true`. Pure aesthetic.
    */
   drawOutlines?: boolean;
+  /**
+   * Optional custom resources (M2 real-texture pipeline).
+   * When omitted, falls back to stub resources (M1 behaviour).
+   */
+  resources?: Resources;
+  /**
+   * Custom X-axis rotation in radians (only used when angle='custom').
+   */
+  rotationX?: number;
+  /**
+   * Custom Y-axis rotation in radians (only used when angle='custom').
+   */
+  rotationY?: number;
 }
 
 /** Result returned by `renderStructureToPNG`. */
@@ -182,8 +195,8 @@ export async function renderStructureToPNG(
     gl.clearDepth(1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    // Stub resources — replaced in M2.
-    const resources = createStubResources(gl);
+    // Use caller-provided resources, or fall back to M1 stub resources
+    const resources = options.resources ?? createStubResources(gl);
 
     // StructureRenderer takes a `WebGLRenderingContext` per its TS
     // signature, but at runtime it reads `gl.canvas.clientWidth` /
@@ -198,7 +211,7 @@ export async function renderStructureToPNG(
     // Build the view matrix from the structure's bounding box so the
     // camera frames it correctly regardless of its size.
     const size = structure.getSize() as [number, number, number];
-    const viewMatrix = viewForAngle(size, angle);
+    const viewMatrix = viewForAngle(size, angle, options.rotationX, options.rotationY);
 
     // The renderer has no single `draw()` — you call each pass
     // individually. We always draw the structure; the grid and

@@ -103,11 +103,22 @@ export function viewSide(size: BlockPos): Mat4 {
 }
 
 /**
+ * Custom angle: caller provides explicit rotation_x and rotation_y
+ * (in radians). Falls back to isometric if both are 0.
+ */
+export function viewCustom(size: BlockPos, rotationX: number, rotationY: number): Mat4 {
+  return buildViewMatrix(size, rotationX, rotationY);
+}
+
+/**
  * Convenience: dispatch by angle name. Used by `pipeline.ts`.
+ * For `custom`, pass rotation as extra arguments (radians).
  */
 export function viewForAngle(
   size: BlockPos,
-  angle: 'isometric' | 'top' | 'front' | 'side',
+  angle: 'isometric' | 'top' | 'front' | 'side' | 'custom',
+  rotationX?: number,
+  rotationY?: number,
 ): Mat4 {
   switch (angle) {
     case 'isometric':
@@ -118,6 +129,8 @@ export function viewForAngle(
       return viewFront(size);
     case 'side':
       return viewSide(size);
+    case 'custom':
+      return viewCustom(size, rotationX ?? 0, rotationY ?? 0);
     default: {
       // Exhaustiveness check — if a future caller adds a variant and
       // forgets to handle it here, this fails at compile time.
