@@ -103,6 +103,45 @@ M6 — Hardening (error UX, cache invalidation, progress reporting, unit tests, 
 
 All milestones complete — ready for v0.1.0 publication.
 
+---
+
+## 🏗️ Building Design Toolkit
+
+This repository also includes a **Minecraft building design toolkit** as a
+[Hermes Agent](https://hermes-agent.nousresearch.com/) skill —
+[`minecraft-building-design`](./skill/minecraft-building-design/).
+
+It provides:
+
+- **Format specifications** for all three major Minecraft structure formats:
+  Vanilla NBT, Create Mod schematic, and Litematica
+- **Python generators** (zero external dependencies) to produce `.nbt`,
+  `.litematic` files from code
+- **Design helpers** (`fill_cuboid`, `hollow_cuboid`, mirror, rotate, etc.)
+- **Example** — a modern villa generated in all three formats
+
+To install:
+
+```bash
+# Via install script
+bash skill/install.sh
+
+# Or manually copy
+cp -r skill/minecraft-building-design ~/.hermes/skills/creative/
+```
+
+Then in Hermes:
+```
+skill_view(name='minecraft-building-design')
+```
+
+The skill complements `deepslate-mcp` perfectly:
+- **deepslate-mcp** renders existing `.nbt`/`.schem`/`.litematic` files to PNG
+- **minecraft-building-design** builds those files from scratch
+
+See [`skill/minecraft-building-design/SKILL.md`](./skill/minecraft-building-design/SKILL.md)
+for full documentation.
+
 ## Resource caching
 
 Vanilla resources (~3,500 blockstates, ~10,000 models, ~1,500 textures) are

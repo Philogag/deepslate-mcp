@@ -266,6 +266,10 @@ in-memory builder.
 - ⬜ Custom Java resource-pack overlay (additive to vanilla)
 - ⬜ Render queue / batch mode
 - ⬜ Web UI demo that embeds the MCP server over HTTP
+- ⬜ **`minecraft-building-design` skill** — a Hermes skill for authoring
+  structure files from code (Vanilla NBT / Create schematic / Litematica).
+  Included as [`skill/minecraft-building-design/`](./skill/minecraft-building-design/);
+  see its [SKILL.md](./skill/minecraft-building-design/SKILL.md) for details.
 
 ## Risks
 
