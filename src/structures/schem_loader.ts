@@ -85,10 +85,20 @@ export async function loadSchemStructure(path: string): Promise<Structure> {
 
   const structure = new Structure([width, height, length]);
 
+  const totalBlocks = width * height * length;
+  const logThreshold = Math.max(1, Math.floor(totalBlocks / 10));
+  let nextLog = logThreshold;
+
   for (let y = 0; y < height; y++) {
     for (let z = 0; z < length; z++) {
       for (let x = 0; x < width; x++) {
         const linearIndex = (y * length + z) * width + x;
+        // Log progress every 10% for large structures
+        if (linearIndex >= nextLog && totalBlocks > 100000) {
+          const pct = Math.round((linearIndex / totalBlocks) * 100);
+          console.error(`[schem] ${pct}% (${linearIndex}/${totalBlocks} blocks)`);
+          nextLog = linearIndex + logThreshold;
+        }
         const tag = blockData.get(linearIndex);
         if (tag === undefined) continue;
         const paletteIdx = tag.getAsNumber();

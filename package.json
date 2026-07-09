@@ -17,7 +17,11 @@
     "dev": "tsx src/server.ts",
     "build": "tsc",
     "start": "node bin/deepslate-mcp.js",
+    "lint": "tsc --noEmit",
+    "lint:strict": "tsc --noEmit --strict",
     "smoke": "node scripts/smoke.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "demo": "tsx examples/demo-structure.ts",
     "gen:fixtures": "tsx scripts/gen_fixtures.ts"
   },
@@ -46,7 +50,8 @@
     "@types/pngjs": "^6.0.0",
     "@types/yauzl": "^3.4.0",
     "tsx": "^4.7.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=20.0.0"

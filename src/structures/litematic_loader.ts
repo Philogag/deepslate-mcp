@@ -229,11 +229,20 @@ export async function loadLitematicStructure(path: string): Promise<Structure> {
   // For each region, iterate YXZ and add blocks.
   for (const r of regions) {
     const totalBlocks = r.sizeX * r.sizeY * r.sizeZ;
+    const progressInterval = Math.max(1, Math.floor(totalBlocks / 1000));
+    const logThreshold = Math.max(1, Math.floor(totalBlocks / 10));
+    let nextLog = logThreshold;
     for (let i = 0; i < totalBlocks; i++) {
       // YXZ index: x innermost, y outermost.
       const x = i % r.sizeX;
       const z = Math.floor(i / r.sizeX) % r.sizeZ;
       const y = Math.floor(i / (r.sizeX * r.sizeZ));
+      // Log progress every 10% for large regions
+      if (i >= nextLog && totalBlocks > 100000) {
+        const pct = Math.round((i / totalBlocks) * 100);
+        console.error(`[litematic] ${r.name}: ${pct}% (${i}/${totalBlocks} blocks)`);
+        nextLog = i + logThreshold;
+      }
       // Read `bits` bits at offset i*bits.
       let paletteIdx: number;
       if (r.longs.length === 0) {

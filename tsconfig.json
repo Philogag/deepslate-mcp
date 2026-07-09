@@ -18,5 +18,5 @@
     "noImplicitOverride": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "scripts", "examples"]
+  "exclude": ["node_modules", "dist", "scripts", "examples", "**/*.test.ts", "**/__debug_*", "**/__test_*", "**/__bug_*"]
 }

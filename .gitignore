@@ -21,6 +21,12 @@ data/
 examples/out/
 *.tmp
 
+# Debug / development artifacts
+src/resources/__debug_*
+src/resources/__test_*
+src/structures/__test_*
+src/resources/__bug_*
+
 # Env
 .env
 .env.local

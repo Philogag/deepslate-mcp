@@ -23,6 +23,7 @@ import { createHeadlessCanvas } from './headless_canvas.js';
 import { capturePNG } from './encoder.js';
 import { viewForAngle } from './camera.js';
 import { createStubResources } from './stub_resources.js';
+import { parseBackground } from '../utils/color.js';
 
 /** Camera preset for the rendered view. */
 export type RenderAngle = 'isometric' | 'top' | 'front' | 'side' | 'custom';
@@ -90,67 +91,7 @@ export interface RenderResult {
 }
 
 /** Internal result of parsing `RenderOptions.background`. */
-interface RGBA {
-  r: number;
-  g: number;
-  b: number;
-  a: number;
-}
-
-/**
- * Parse the user-supplied background string into a 0..1 RGBA quad. We
- * support the three forms listed on `RenderOptions.background` and
- * reject everything else.
- */
-function parseBackground(input: string | undefined): RGBA {
-  if (input === undefined || input === 'transparent') {
-    return { r: 0, g: 0, b: 0, a: 0 };
-  }
-  const s = input.trim().toLowerCase();
-  // Hex forms.
-  const hexMatch = /^#([0-9a-f]{6}|[0-9a-f]{8})$/.exec(s);
-  if (hexMatch) {
-    const hex = hexMatch[1]!;
-    const r = parseInt(hex.slice(0, 2), 16) / 255;
-    const g = parseInt(hex.slice(2, 4), 16) / 255;
-    const b = parseInt(hex.slice(4, 6), 16) / 255;
-    const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1;
-    return { r, g, b, a };
-  }
-  // rgb() / rgba() functional forms.
-  const fnMatch = /^rgba?\(\s*([^)]+)\)$/.exec(s);
-  if (fnMatch) {
-    const parts = fnMatch[1]!.split(',').map((p) => p.trim());
-    if (parts.length !== 3 && parts.length !== 4) {
-      throw new Error(`Invalid background: ${input}`);
-    }
-    const nums = parts.map((p, i) => {
-      // Last part of rgba() is alpha — must be a fraction 0..1, not 0..255.
-      if (i === 3) {
-        const f = parseFloat(p);
-        if (!Number.isFinite(f)) {
-          throw new Error(`Invalid background alpha: ${input}`);
-        }
-        return f;
-      }
-      const n = parseInt(p, 10);
-      if (!Number.isFinite(n) || n < 0 || n > 255) {
-        throw new Error(`Invalid background channel: ${input}`);
-      }
-      return n / 255;
-    });
-    return {
-      r: nums[0]!,
-      g: nums[1]!,
-      b: nums[2]!,
-      a: nums[3] ?? 1,
-    };
-  }
-  throw new Error(
-    `Unsupported background value: ${input}. ` +
-      'Use "transparent", "#RRGGBB", "#RRGGBBAA", "rgb(r,g,b)", or "rgba(r,g,b,a)".',
-  );
-}
+type RGBA = import('../utils/color.js').RGBA;
 
 /**
  * Render a `Structure` to a PNG buffer.

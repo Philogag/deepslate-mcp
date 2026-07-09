@@ -19,6 +19,7 @@ import { buildVanillaResources } from '../resources/index.js';
 import { createHeadlessCanvas } from '../render/headless_canvas.js';
 import { capturePNG } from '../render/encoder.js';
 import { resolvePath, tempOutputPath } from '../utils/paths.js';
+import { parseBackground } from '../utils/color.js';
 import * as fs from 'node:fs/promises';
 
 // ---- Cached resources singleton ----
@@ -66,43 +67,6 @@ const renderItemSchema = z.object({
 });
 
 type RenderItemArgs = z.infer<typeof renderItemSchema>;
-
-// ---- Background parser (mirrors pipeline.ts) ----
-
-interface RGBA { r: number; g: number; b: number; a: number }
-
-function parseBackground(input: string | undefined): RGBA {
-  if (input === undefined || input === 'transparent') {
-    return { r: 0, g: 0, b: 0, a: 0 };
-  }
-  const s = input.trim().toLowerCase();
-  const hexMatch = /^#([0-9a-f]{6}|[0-9a-f]{8})$/.exec(s);
-  if (hexMatch) {
-    const hex = hexMatch[1]!;
-    return {
-      r: parseInt(hex.slice(0, 2), 16) / 255,
-      g: parseInt(hex.slice(2, 4), 16) / 255,
-      b: parseInt(hex.slice(4, 6), 16) / 255,
-      a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1,
-    };
-  }
-  const fnMatch = /^rgba?\\(\s*([^)]+)\\)$/.exec(s);
-  if (fnMatch) {
-    const parts = fnMatch[1]!.split(',').map((p) => p.trim());
-    if (parts.length !== 3 && parts.length !== 4) {
-      throw new Error(`Invalid background: ${input}`);
-    }
-    const nums = parts.map((p, i) => {
-      if (i === 3) { return parseFloat(p); }
-      return parseInt(p, 10) / 255;
-    });
-    return { r: nums[0]!, g: nums[1]!, b: nums[2]!, a: nums[3] ?? 1 };
-  }
-  throw new Error(
-    `Unsupported background value: ${input}. ` +
-    'Use "transparent", "#RRGGBB", "#RRGGBBAA", "rgb(r,g,b)", or "rgba(r,g,b,a)".',
-  );
-}
 
 // ---- Tool registration ----
 

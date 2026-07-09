@@ -20,6 +20,7 @@ import { buildVanillaResources } from '../resources/index.js';
 import { createHeadlessCanvas } from '../render/headless_canvas.js';
 import { capturePNG } from '../render/encoder.js';
 import { buildViewMatrix } from '../render/camera.js';
+import { parseBackground } from '../utils/color.js';
 import { resolvePath, tempOutputPath } from '../utils/paths.js';
 import * as fs from 'node:fs/promises';
 
@@ -55,48 +56,6 @@ async function getResources(): Promise<{
     counts: { blockstates: number; models: number; textures: number };
     atlasSize: [number, number];
   };
-}
-
-// ---- Background parser (mirrors pipeline.ts private function) ----
-
-interface RGBA { r: number; g: number; b: number; a: number }
-
-function parseBackground(input: string | undefined): RGBA {
-  if (input === undefined || input === 'transparent') {
-    return { r: 0, g: 0, b: 0, a: 0 };
-  }
-  const s = input.trim().toLowerCase();
-  const hexMatch = /^#([0-9a-f]{6}|[0-9a-f]{8})$/.exec(s);
-  if (hexMatch) {
-    const hex = hexMatch[1]!;
-    const r = parseInt(hex.slice(0, 2), 16) / 255;
-    const g = parseInt(hex.slice(2, 4), 16) / 255;
-    const b = parseInt(hex.slice(4, 6), 16) / 255;
-    const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1;
-    return { r, g, b, a };
-  }
-  const fnMatch = /^rgba?\(\\s*([^)]+)\)$/.exec(s);
-  if (fnMatch) {
-    const parts = fnMatch[1]!.split(',').map((p: string) => p.trim());
-    if (parts.length !== 3 && parts.length !== 4) {
-      throw new Error(`Invalid background: ${input}`);
-    }
-    const nums = parts.map((p: string, i: number) => {
-      if (i === 3) {
-        const f = parseFloat(p);
-        if (!Number.isFinite(f)) { throw new Error(`Invalid background alpha: ${input}`); }
-        return f;
-      }
-      const n = parseInt(p, 10);
-      if (!Number.isFinite(n) || n < 0 || n > 255) { throw new Error(`Invalid background channel: ${input}`); }
-      return n / 255;
-    });
-    return { r: nums[0]!, g: nums[1]!, b: nums[2]!, a: nums[3] ?? 1 };
-  }
-  throw new Error(
-    `Unsupported background value: ${input}. ` +
-    'Use "transparent", "#RRGGBB", "#RRGGBBAA", "rgb(r,g,b)", or "rgba(r,g,b,a)".',
-  );
 }
 
 // ---- Custom render with zoom support ----
