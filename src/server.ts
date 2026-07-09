@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 /**
- * deepslate-mcp — MCP server entrypoint (M0: hello-world).
+ * deepslate-mcp — MCP server entrypoint (M4).
  *
- * Registers a single dummy `echo` tool so we can validate the
- * stdio transport and the tool-call round-trip. Real render tools
- * land in M4.
+ * Registers four tools:
+ *   1. render_structure   — load + render .nbt/.schem/.litematic to PNG
+ *   2. render_blocks      — programmatic block-list → PNG
+ *   3. inspect_structure  — metadata-only (no render)
+ *   4. render_item        — single item/block icon
+ *
+ * Resources are built once (cached singleton) on first tool call.
  */
-
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { z } from 'zod';
+
+import { registerRenderStructureTool } from './tools/render_structure.js';
+import { registerRenderBlocksTool } from './tools/render_blocks.js';
+import { registerInspectStructureTool } from './tools/inspect_structure.js';
+import { registerRenderItemTool } from './tools/render_item.js';
 
 async function main(): Promise<void> {
   const server = new McpServer(
@@ -24,25 +31,11 @@ async function main(): Promise<void> {
     },
   );
 
-  // Hello-world tool: returns the text it was given. Sanity-check
-  // for the MCP plumbing; will be replaced in M4.
-  server.tool(
-    'echo',
-    'Echo back the provided text. Used as a hello-world smoke tool in M0.',
-    {
-      text: z.string().min(1).describe('The text to echo back.'),
-    },
-    async ({ text }: { text: string }) => {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `echo: ${text}`,
-          },
-        ],
-      };
-    },
-  );
+  // Register all M4 tools.
+  registerRenderStructureTool(server);
+  registerRenderBlocksTool(server);
+  registerInspectStructureTool(server);
+  registerRenderItemTool(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

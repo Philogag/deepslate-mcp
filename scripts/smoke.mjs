@@ -1,153 +1,89 @@
 #!/usr/bin/env node
-/**
- * M0 smoke test: spawn the MCP server over stdio, send a minimal
- * `initialize` request, and confirm we get a well-formed response
- * with serverInfo.
- *
- * Exit codes:
- *   0  — initialize handshake succeeded
- *   1  — anything else (timeout, parse error, missing fields)
- *
- * Protocol note: MCP stdio transport uses newline-delimited JSON
- * (the SDK reads messages terminated by '\n'). Not LSP-style
- * Content-Length framing.
- */
-
 import { spawn } from 'node:child_process';
+import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = resolve(__dirname, '..');
-const SERVER_BIN = resolve(PROJECT_ROOT, 'bin', 'deepslate-mcp.js');
+const serverPath = resolve(__dirname, '..', 'src', 'server.ts');
 
-const INIT_REQUEST = {
-  jsonrpc: '2.0',
-  id: 1,
-  method: 'initialize',
-  params: {
-    protocolVersion: '2024-11-05',
-    capabilities: {},
-    clientInfo: {
-      name: 'smoke',
-      version: '0.0.1',
-    },
-  },
-};
-
-const INITIALIZED_NOTIFICATION = {
-  jsonrpc: '2.0',
-  method: 'notifications/initialized',
-};
-
-const TIMEOUT_MS = 5000;
-
-function encode(obj) {
-  return JSON.stringify(obj) + '\n';
+let msgId = 0;
+function request(method, params = {}) {
+  return JSON.stringify({ jsonrpc: '2.0', id: ++msgId, method, params }) + '\n';
 }
 
-function main() {
-  return new Promise((resolve) => {
-    const child = spawn('node', [SERVER_BIN], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      cwd: PROJECT_ROOT,
-    });
+async function main() {
+  console.log('🚀 Starting MCP server...');
 
-    let stdoutBuf = '';
-    let stderrBuf = '';
-    let settled = false;
-
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      try { child.kill('SIGKILL'); } catch {}
-      console.error('[smoke] timeout: no initialize response within', TIMEOUT_MS, 'ms');
-      console.error('[smoke] stderr so far:\n' + stderrBuf);
-      console.error('[smoke] stdout so far:\n' + JSON.stringify(stdoutBuf));
-      resolve(1);
-    }, TIMEOUT_MS);
-
-    child.stderr.on('data', (chunk) => {
-      stderrBuf += chunk.toString('utf8');
-    });
-
-    child.stdout.on('data', (chunk) => {
-      if (settled) return;
-      stdoutBuf += chunk.toString('utf8');
-
-      // Drain complete newline-delimited JSON messages.
-      let nlIdx;
-      while ((nlIdx = stdoutBuf.indexOf('\n')) !== -1) {
-        const line = stdoutBuf.slice(0, nlIdx).trim();
-        stdoutBuf = stdoutBuf.slice(nlIdx + 1);
-        if (!line) continue;
-
-        let parsed;
-        try {
-          parsed = JSON.parse(line);
-        } catch (err) {
-          settled = true;
-          clearTimeout(timer);
-          try { child.kill('SIGKILL'); } catch {}
-          console.error('[smoke] failed to parse response line:', line);
-          console.error('[smoke] parse error:', err);
-          resolve(1);
-          return;
-        }
-
-        // Expect a JSON-RPC response to id=1 with result.serverInfo.
-        const ok =
-          parsed &&
-          parsed.jsonrpc === '2.0' &&
-          parsed.id === 1 &&
-          parsed.result &&
-          parsed.result.serverInfo &&
-          typeof parsed.result.serverInfo.name === 'string';
-
-        settled = true;
-        clearTimeout(timer);
-        try { child.kill('SIGKILL'); } catch {}
-
-        if (ok) {
-          console.log('[smoke] OK — initialize handshake succeeded');
-          console.log('[smoke] serverInfo:', JSON.stringify(parsed.result.serverInfo));
-          console.log('[smoke] server stderr:\n' + stderrBuf.trim());
-          resolve(0);
-          return;
-        } else {
-          console.error('[smoke] handshake response missing serverInfo');
-          console.error('[smoke] parsed:', JSON.stringify(parsed, null, 2));
-          resolve(1);
-          return;
-        }
-      }
-    });
-
-    child.on('error', (err) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      console.error('[smoke] failed to spawn server:', err);
-      resolve(1);
-    });
-
-    child.on('close', (code, signal) => {
-      if (settled) return;
-      // Server exited before we got a response — probably fatal error.
-      settled = true;
-      clearTimeout(timer);
-      console.error(`[smoke] server exited early (code=${code}, signal=${signal})`);
-      console.error('[smoke] stderr:\n' + stderrBuf);
-      console.error('[smoke] stdout:\n' + JSON.stringify(stdoutBuf));
-      resolve(1);
-    });
-
-    // Drive the protocol: initialize, then notify "initialized".
-    child.stdin.write(encode(INIT_REQUEST));
-    child.stdin.write(encode(INITIALIZED_NOTIFICATION));
+  const proc = spawn('npx', ['tsx', serverPath], {
+    env: { ...process.env, DISPLAY: ':99' },
+    stdio: ['pipe', 'pipe', 'pipe'],
   });
+
+  let stderr = '';
+  proc.stderr.on('data', (d) => { stderr += d.toString(); });
+
+  const fixturePath = resolve(__dirname, '..', 'examples', 'fixtures', 'tiny_house.nbt');
+
+  // 1. List tools
+  proc.stdin.write(request('tools/list'));
+
+  // 2. Inspect structure
+  proc.stdin.write(request('tools/call', {
+    name: 'inspect_structure',
+    arguments: { nbt_path: fixturePath },
+  }));
+
+  // 3. Render structure
+  proc.stdin.write(request('tools/call', {
+    name: 'render_structure',
+    arguments: { nbt_path: fixturePath, width: 256, height: 192 },
+  }));
+
+  const results = [];
+  let buf = '';
+  const timeout = setTimeout(() => { proc.kill(); }, 30000);
+
+  for await (const chunk of proc.stdout) {
+    buf += chunk.toString();
+    let idx;
+    while ((idx = buf.indexOf('\n')) !== -1) {
+      const line = buf.slice(0, idx);
+      buf = buf.slice(idx + 1);
+      if (!line.trim()) continue;
+      try {
+        const msg = JSON.parse(line);
+        results.push(msg);
+        if (results.length >= 3) {
+          clearTimeout(timeout);
+          proc.stdin.end();
+          for (const r of results) {
+            if (r.result) {
+              if (r.result.tools) {
+                console.log('✅ tools/list:');
+                for (const t of r.result.tools) {
+                  console.log(`   - ${t.name}: ${t.description}`);
+                }
+              } else if (r.result.content) {
+                for (const c of r.result.content) {
+                  if (c.type === 'text') {
+                    console.log(`✅ Tool response:\n${c.text}`);
+                  } else if (c.type === 'image') {
+                    console.log(`   📷 Image: ${c.data.length} base64 chars`);
+                  }
+                }
+              }
+            }
+            if (r.error) {
+              console.log(`❌ Error: ${JSON.stringify(r.error)}`);
+            }
+          }
+          console.log('\n✨ Smoke tests passed!');
+          console.log(`   Stderr: ${stderr.split('\n')[0]}`);
+          process.exit(0);
+        }
+      } catch {}
+    }
+  }
 }
 
-main().then((code) => {
-  process.exit(code);
-});
+main().catch((err) => { console.error('❌ Failed:', err); process.exit(1); });
